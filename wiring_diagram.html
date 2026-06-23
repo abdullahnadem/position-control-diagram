@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Closed-Loop Position Control – Wiring Diagram</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@400;600;700&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #0a0e14;
+    font-family: 'Rajdhani', sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 100vh;
+    padding: 24px 16px;
+  }
+
+  header {
+    text-align: center;
+    margin-bottom: 20px;
+  }
+
+  header h1 {
+    font-family: 'Rajdhani', sans-serif;
+    font-weight: 700;
+    font-size: 1.5rem;
+    color: #e0e8f0;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+
+  header p {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.72rem;
+    color: #4a90b8;
+    margin-top: 4px;
+    letter-spacing: 0.08em;
+  }
+
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px;
+    justify-content: center;
+    margin-bottom: 18px;
+  }
+
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.68rem;
+    color: #b0bec5;
+  }
+
+  .legend-line {
+    width: 28px;
+    height: 3px;
+    border-radius: 2px;
+  }
+
+  .diagram-wrap {
+    background: #0d1117;
+    border: 1px solid #1e2a38;
+    border-radius: 10px;
+    padding: 10px;
+    box-shadow: 0 0 40px rgba(0,120,200,0.08);
+    overflow-x: auto;
+    max-width: 100%;
+  }
+
+  svg text {
+    font-family: 'Share Tech Mono', monospace;
+  }
+
+  .tooltip {
+    position: fixed;
+    background: #1a2332;
+    border: 1px solid #2a4060;
+    color: #cdd8e0;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.7rem;
+    padding: 6px 10px;
+    border-radius: 5px;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.15s;
+    z-index: 999;
+    max-width: 220px;
+    line-height: 1.5;
+  }
+
+  footer {
+    margin-top: 18px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.65rem;
+    color: #2a4060;
+    letter-spacing: 0.06em;
+    text-align: center;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Closed-Loop Position Control System</h1>
+  <p>Arduino Uno · DRV8825 · NEMA 17 · Lab PSU 12V/2A · Potentiometer Feedback · Hover components for info</p>
+</header>
+
+<div class="legend">
+  <div class="legend-item"><div class="legend-line" style="background:#e53935;"></div>12V Power (VMOT)</div>
+  <div class="legend-item"><div class="legend-line" style="background:#333d4f; border: 1px solid #555;"></div>GND</div>
+  <div class="legend-item"><div class="legend-line" style="background:#f9a825;"></div>5V Logic</div>
+  <div class="legend-item"><div class="legend-line" style="background:#43a047;"></div>Signal (STP/DIR)</div>
+  <div class="legend-item"><div class="legend-line" style="background:#1e88e5;"></div>Analog (A0)</div>
+  <div class="legend-item"><div class="legend-line" style="background:#ab47bc;"></div>Motor Coils</div>
+</div>
+
+<div class="diagram-wrap">
+<svg id="diagram" width="980" height="700" viewBox="0 0 980 700" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <filter id="glow-red">
+      <feGaussianBlur stdDeviation="2.5" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="glow-blue">
+      <feGaussianBlur stdDeviation="2" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="glow-green">
+      <feGaussianBlur stdDeviation="1.5" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <marker id="arr" markerWidth="7" markerHeight="7" refX="5" refY="3.5" orient="auto">
+      <polygon points="0 0, 7 3.5, 0 7" fill="#546e7a"/>
+    </marker>
+    <marker id="arr-red" markerWidth="7" markerHeight="7" refX="5" refY="3.5" orient="auto">
+      <polygon points="0 0, 7 3.5, 0 7" fill="#e53935"/>
+    </marker>
+    <marker id="arr-grn" markerWidth="7" markerHeight="7" refX="5" refY="3.5" orient="auto">
+      <polygon points="0 0, 7 3.5, 0 7" fill="#43a047"/>
+    </marker>
+    <marker id="arr-pur" markerWidth="7" markerHeight="7" refX="5" refY="3.5" orient="auto">
+      <polygon points="0 0, 7 3.5, 0 7" fill="#ab47bc"/>
+    </marker>
+
+    <!-- Breadboard stripe pattern -->
+    <pattern id="bbStripe" width="10" height="4" patternUnits="userSpaceOnUse">
+      <rect width="10" height="4" fill="#1a2332"/>
+      <line x1="0" y1="0" x2="10" y2="0" stroke="#1e2d42" stroke-width="1"/>
+    </pattern>
+  </defs>
+
+  <!-- ===== BACKGROUND GRID ===== -->
+  <rect width="980" height="700" fill="#0d1117"/>
+  <g stroke="#111820" stroke-width="1">
+    <!-- subtle grid lines -->
+    <line x1="0" y1="50" x2="980" y2="50"/>
+    <line x1="0" y1="100" x2="980" y2="100"/>
+    <line x1="0" y1="150" x2="980" y2="150"/>
+    <line x1="0" y1="200" x2="980" y2="200"/>
+    <line x1="0" y1="250" x2="980" y2="250"/>
+    <line x1="0" y1="300" x2="980" y2="300"/>
+    <line x1="0" y1="350" x2="980" y2="350"/>
+    <line x1="0" y1="400" x2="980" y2="400"/>
+    <line x1="0" y1="450" x2="980" y2="450"/>
+    <line x1="0" y1="500" x2="980" y2="500"/>
+    <line x1="0" y1="550" x2="980" y2="550"/>
+    <line x1="0" y1="600" x2="980" y2="600"/>
+    <line x1="0" y1="650" x2="980" y2="650"/>
+    <line x1="50" y1="0" x2="50" y2="700"/>
+    <line x1="150" y1="0" x2="150" y2="700"/>
+    <line x1="250" y1="0" x2="250" y2="700"/>
+    <line x1="350" y1="0" x2="350" y2="700"/>
+    <line x1="450" y1="0" x2="450" y2="700"/>
+    <line x1="550" y1="0" x2="550" y2="700"/>
+    <line x1="650" y1="0" x2="650" y2="700"/>
+    <line x1="750" y1="0" x2="750" y2="700"/>
+    <line x1="850" y1="0" x2="850" y2="700"/>
+    <line x1="950" y1="0" x2="950" y2="700"/>
+  </g>
+
+  <!-- ===================================================================
+       POWER SUPPLY
+  ==================================================================== -->
+  <g id="comp-psu" class="component" data-tip="Lab Power Supply&#10;12V DC, 2.0A current limit&#10;(+) → VMOT rail via red wire&#10;(−) → Common GND rail">
+    <rect x="20" y="20" width="130" height="90" rx="8" fill="#131d2a" stroke="#2a5078" stroke-width="1.5"/>
+    <!-- Panel face -->
+    <rect x="28" y="30" width="114" height="70" rx="4" fill="#0a1520"/>
+    <!-- Meters -->
+    <rect x="34" y="36" width="46" height="28" rx="3" fill="#050c14" stroke="#1e3a52" stroke-width="1"/>
+    <text x="57" y="53" font-size="10" fill="#f9a825" text-anchor="middle" font-weight="bold">12.0V</text>
+    <text x="57" y="61" font-size="7" fill="#4a7090" text-anchor="middle">VOLTAGE</text>
+    <rect x="88" y="36" width="46" height="28" rx="3" fill="#050c14" stroke="#1e3a52" stroke-width="1"/>
+    <text x="111" y="53" font-size="10" fill="#43a047" text-anchor="middle" font-weight="bold">2.0A</text>
+    <text x="111" y="61" font-size="7" fill="#4a7090" text-anchor="middle">LIMIT</text>
+    <!-- Terminals -->
+    <circle cx="50" cy="82" r="7" fill="#b71c1c" stroke="#e53935" stroke-width="1.5"/>
+    <text x="50" y="86" font-size="7" fill="#fff" text-anchor="middle" font-weight="bold">+</text>
+    <circle cx="115" cy="82" r="7" fill="#1a1a1a" stroke="#555" stroke-width="1.5"/>
+    <text x="115" y="86" font-size="7" fill="#aaa" text-anchor="middle" font-weight="bold">−</text>
+    <text x="85" y="100" font-size="7.5" fill="#4a7090" text-anchor="middle">LAB PSU</text>
+  </g>
+
+  <!-- Label -->
+  <text x="85" y="122" font-size="8.5" fill="#2a6090" text-anchor="middle" letter-spacing="1">POWER SUPPLY</text>
+
+  <!-- ===================================================================
+       BREADBOARD — main body
+  ==================================================================== -->
+  <g id="comp-breadboard">
+    <!-- Full body -->
+    <rect x="180" y="140" width="580" height="390" rx="6" fill="#151f2c" stroke="#1e3050" stroke-width="1.5"/>
+    <!-- Label -->
+    <text x="470" y="520" font-size="9" fill="#1e3050" text-anchor="middle" letter-spacing="2">BREADBOARD</text>
+
+    <!-- Power rail top (red +) -->
+    <rect x="190" y="148" width="560" height="14" rx="3" fill="#1a0a0a" stroke="#3a1010" stroke-width="1"/>
+    <text x="196" y="159" font-size="7" fill="#e53935">+</text>
+    <!-- Power rail top (black GND) -->
+    <rect x="190" y="164" width="560" height="14" rx="3" fill="#0d0d0d" stroke="#222" stroke-width="1"/>
+    <text x="196" y="175" font-size="7" fill="#546e7a">−</text>
+
+    <!-- Power rail bottom (red +) -->
+    <rect x="190" y="500" width="560" height="14" rx="3" fill="#1a0a0a" stroke="#3a1010" stroke-width="1"/>
+    <text x="196" y="511" font-size="7" fill="#e53935">+</text>
+    <!-- Power rail bottom (black GND) -->
+    <rect x="190" y="516" width="560" height="14" rx="3" fill="#0d0d0d" stroke="#222" stroke-width="1"/>
+    <text x="196" y="527" font-size="7" fill="#546e7a">−</text>
+
+    <!-- Tie points (dot matrix suggestion) -->
+    <g fill="#1a2d40" opacity="0.6">
+      <!-- row of dots for tie points visual -->
+      <rect x="195" y="188" width="550" height="300" rx="2" fill="url(#bbStripe)"/>
+    </g>
+
+    <!-- Center divider -->
+    <rect x="450" y="192" width="10" height="296" rx="2" fill="#0a1520"/>
+
+    <!-- GND Rail line (visual) -->
+    <line x1="190" y1="171" x2="750" y2="171" stroke="#333d4f" stroke-width="2" stroke-dasharray="4,3"/>
+    <!-- 12V Rail line (visual) -->
+    <line x1="190" y1="155" x2="750" y2="155" stroke="#b71c1c" stroke-width="2" stroke-dasharray="4,3"/>
+  </g>
+
+  <!-- GND Rail label -->
+  <text x="470" y="182" font-size="8" fill="#2a4060" text-anchor="middle" letter-spacing="1">COMMON GND RAIL</text>
+  <!-- 12V Rail label -->
+  <text x="470" y="146" font-size="8" fill="#7a1010" text-anchor="middle" letter-spacing="1">12V (VMOT) RAIL</text>
+
+  <!-- ===================================================================
+       CAPACITOR (100µF Decoupling)
+  ==================================================================== -->
+  <g id="comp-cap" class="component" data-tip="Decoupling Capacitor&#10;100µF Electrolytic&#10;Smooths voltage spikes from motor switching&#10;Positive → 12V rail, Negative → GND rail">
+    <!-- Body -->
+    <rect x="386" y="210" width="28" height="58" rx="4" fill="#1a2d1a" stroke="#2e5c2e" stroke-width="1.5"/>
+    <!-- Stripe (negative marking) -->
+    <rect x="386" y="210" width="10" height="58" rx="4" fill="#111f11"/>
+    <text x="391" y="244" font-size="7" fill="#43a047" transform="rotate(-90,391,244)">−</text>
+    <!-- Lead top -->
+    <line x1="400" y1="210" x2="400" y2="196" stroke="#c8a000" stroke-width="2"/>
+    <!-- Lead bottom -->
+    <line x1="394" y1="268" x2="394" y2="285" stroke="#c8a000" stroke-width="2"/>
+    <line x1="400" y1="268" x2="400" y2="285" stroke="#c8a000" stroke-width="2"/>
+    <!-- Label -->
+    <text x="430" y="238" font-size="8" fill="#43a047">100µF</text>
+    <text x="430" y="249" font-size="7" fill="#2a6040">DECOUPLING</text>
+    <text x="430" y="258" font-size="7" fill="#2a6040">CAP</text>
+    <!-- Top to 12V rail -->
+    <line x1="400" y1="196" x2="400" y2="171" stroke="#e53935" stroke-width="1.5" stroke-dasharray="3,2"/>
+    <!-- Bottom to GND rail -->
+    <line x1="396" y1="285" x2="396" y2="310" stroke="#333d4f" stroke-width="1.5" stroke-dasharray="3,2"/>
+    <text x="400" y="300" font-size="6" fill="#333d4f" text-anchor="middle">GND</text>
+  </g>
+
+  <!-- ===================================================================
+       ARDUINO UNO
+  ==================================================================== -->
+  <g id="comp-arduino" class="component" data-tip="Arduino Uno&#10;Controls stepper via DRV8825&#10;Pin 3 → STEP (PWM pulse)&#10;Pin 4 → DIR (direction)&#10;Pin 5 → Mode button (INPUT_PULLUP)&#10;A0 → Target pot wiper&#10;5V → Pot VCC&#10;GND → Common GND">
+    <!-- PCB body -->
+    <rect x="22" y="220" width="140" height="210" rx="6" fill="#0d2818" stroke="#1a5c30" stroke-width="2"/>
+    <!-- USB port -->
+    <rect x="18" y="240" width="14" height="22" rx="2" fill="#1a1a2e" stroke="#333" stroke-width="1"/>
+    <text x="13" y="263" font-size="6" fill="#555" transform="rotate(-90,13,263)">USB</text>
+    <!-- Power jack -->
+    <rect x="18" y="280" width="14" height="18" rx="2" fill="#2a1a0a" stroke="#555" stroke-width="1"/>
+    <!-- IC chip -->
+    <rect x="70" y="310" width="40" height="30" rx="2" fill="#111" stroke="#333" stroke-width="1"/>
+    <text x="90" y="328" font-size="6.5" fill="#555" text-anchor="middle">ATmega328P</text>
+    <!-- Crystal -->
+    <rect x="65" y="345" width="20" height="8" rx="2" fill="#c8a000"/>
+    <text x="75" y="352" font-size="5.5" fill="#000" text-anchor="middle">16MHz</text>
+
+    <!-- Pin labels - digital -->
+    <text x="162" y="232" font-size="7.5" fill="#f9a825">5V ──○</text>
+    <text x="162" y="246" font-size="7.5" fill="#333d4f">GND ─○</text>
+    <text x="162" y="260" font-size="7.5" fill="#43a047">D3 ──○</text>
+    <text x="162" y="274" font-size="7.5" fill="#43a047">D4 ──○</text>
+    <text x="162" y="288" font-size="7.5" fill="#1e88e5">D5 ──○</text>
+    <text x="162" y="302" font-size="7.5" fill="#1e88e5">A0 ──○</text>
+
+    <!-- pin dots -->
+    <circle cx="208" cy="228" r="3" fill="#f9a825"/>
+    <circle cx="208" cy="242" r="3" fill="#546e7a"/>
+    <circle cx="208" cy="256" r="3" fill="#43a047"/>
+    <circle cx="208" cy="270" r="3" fill="#43a047"/>
+    <circle cx="208" cy="284" r="3" fill="#1e88e5"/>
+    <circle cx="208" cy="298" r="3" fill="#1e88e5"/>
+
+    <!-- Arduino label -->
+    <text x="92" y="240" font-size="8.5" fill="#43a047" text-anchor="middle" font-weight="bold" letter-spacing="1">ARDUINO</text>
+    <text x="92" y="252" font-size="8" fill="#1a5c30" text-anchor="middle">UNO</text>
+  </g>
+
+  <!-- ===================================================================
+       DRV8825 STEPPER DRIVER
+  ==================================================================== -->
+  <g id="comp-drv" class="component" data-tip="DRV8825 Stepper Driver&#10;VMOT (12V) with 100µF cap&#10;GND → Common GND&#10;RST &amp; SLP shorted together (ENABLE)&#10;STP ← Arduino D3 (pulse to step)&#10;DIR ← Arduino D4 (HIGH=CW, LOW=CCW)&#10;Outputs: 1A/1B = Coil A, 2A/2B = Coil B">
+    <!-- PCB body -->
+    <rect x="480" y="220" width="130" height="170" rx="5" fill="#1a1a2e" stroke="#3a3a7a" stroke-width="2"/>
+    <!-- IC -->
+    <rect x="510" y="270" width="70" height="50" rx="2" fill="#111" stroke="#2a2a6a" stroke-width="1"/>
+    <text x="545" y="299" font-size="6.5" fill="#5050c8" text-anchor="middle">DRV8825</text>
+    <!-- Heat slug indication -->
+    <rect x="520" y="305" width="50" height="8" rx="1" fill="#2a2a5a"/>
+    <text x="545" y="312" font-size="5" fill="#4040a0" text-anchor="middle">HEAT PAD</text>
+
+    <!-- Left pins (input side) -->
+    <text x="456" y="232" font-size="7.5" fill="#e53935" text-anchor="end">VMOT ○─</text>
+    <text x="456" y="246" font-size="7.5" fill="#546e7a" text-anchor="end">GND ○─</text>
+    <text x="456" y="260" font-size="7.5" fill="#43a047" text-anchor="end">STP ○─</text>
+    <text x="456" y="274" font-size="7.5" fill="#43a047" text-anchor="end">DIR ○─</text>
+    <text x="456" y="288" font-size="7.5" fill="#f9a825" text-anchor="end">RST ○─</text>
+    <text x="456" y="302" font-size="7.5" fill="#f9a825" text-anchor="end">SLP ○─</text>
+
+    <!-- Left pin dots -->
+    <circle cx="478" cy="228" r="3" fill="#e53935"/>
+    <circle cx="478" cy="242" r="3" fill="#546e7a"/>
+    <circle cx="478" cy="256" r="3" fill="#43a047"/>
+    <circle cx="478" cy="270" r="3" fill="#43a047"/>
+    <circle cx="478" cy="284" r="3" fill="#f9a825"/>
+    <circle cx="478" cy="298" r="3" fill="#f9a825"/>
+
+    <!-- Right pins (motor output side) -->
+    <text x="615" y="232" font-size="7.5" fill="#ab47bc">○─ 1A</text>
+    <text x="615" y="246" font-size="7.5" fill="#ab47bc">○─ 1B</text>
+    <text x="615" y="260" font-size="7.5" fill="#9c27b0">○─ 2A</text>
+    <text x="615" y="274" font-size="7.5" fill="#9c27b0">○─ 2B</text>
+
+    <!-- Right pin dots -->
+    <circle cx="613" cy="228" r="3" fill="#ab47bc"/>
+    <circle cx="613" cy="242" r="3" fill="#ab47bc"/>
+    <circle cx="613" cy="256" r="3" fill="#9c27b0"/>
+    <circle cx="613" cy="270" r="3" fill="#9c27b0"/>
+
+    <!-- Label -->
+    <text x="545" y="245" font-size="8.5" fill="#5050c8" text-anchor="middle" font-weight="bold">STEPPER DRIVER</text>
+  </g>
+
+  <!-- ===================================================================
+       RST / SLP JUMPER
+  ==================================================================== -->
+  <g id="comp-jumper" class="component" data-tip="RST-SLP Jumper&#10;Short RST to SLP to keep&#10;the DRV8825 always enabled&#10;(Active HIGH on both pins)">
+    <!-- jumper wire -->
+    <path d="M478,284 C460,284 460,298 478,298" stroke="#f9a825" stroke-width="2" fill="none" stroke-dasharray="3,2"/>
+    <text x="450" y="293" font-size="7.5" fill="#f9a825" text-anchor="middle">JUMPER</text>
+    <text x="450" y="303" font-size="6" fill="#7a6010" text-anchor="middle">RST=SLP</text>
+  </g>
+
+  <!-- ===================================================================
+       NEMA 17 STEPPER MOTOR
+  ==================================================================== -->
+  <g id="comp-nema" class="component" data-tip="NEMA 17 Stepper Motor&#10;Bipolar, 4-wire&#10;Coil A: 1A + 1B (DRV8825 outputs)&#10;Coil B: 2A + 2B (DRV8825 outputs)&#10;Step angle: 1.8° (200 steps/rev)&#10;Rated: 12V / ~1.5A">
+    <!-- Motor body -->
+    <rect x="760" y="185" width="110" height="110" rx="10" fill="#1a1a1a" stroke="#3a3a3a" stroke-width="2.5"/>
+    <!-- Face plate -->
+    <circle cx="815" cy="240" r="42" fill="#111" stroke="#2a2a2a" stroke-width="2"/>
+    <!-- Shaft -->
+    <rect x="855" y="232" width="25" height="16" rx="3" fill="#2a2a2a" stroke="#3a3a3a" stroke-width="1.5"/>
+    <line x1="855" y1="238" x2="880" y2="238" stroke="#4a4a4a" stroke-width="1"/>
+    <!-- Bearing -->
+    <circle cx="815" cy="240" r="18" fill="#1a1a1a" stroke="#444" stroke-width="2"/>
+    <circle cx="815" cy="240" r="6" fill="#2a2a2a" stroke="#555" stroke-width="1.5"/>
+    <!-- Mounting holes -->
+    <circle cx="778" cy="200" r="4" fill="none" stroke="#333" stroke-width="1.5"/>
+    <circle cx="852" cy="200" r="4" fill="none" stroke="#333" stroke-width="1.5"/>
+    <circle cx="778" cy="280" r="4" fill="none" stroke="#333" stroke-width="1.5"/>
+    <circle cx="852" cy="280" r="4" fill="none" stroke="#333" stroke-width="1.5"/>
+    <!-- Coil labels -->
+    <text x="815" y="243" font-size="7" fill="#555" text-anchor="middle">SHAFT</text>
+    <!-- Motor label -->
+    <text x="815" y="308" font-size="8.5" fill="#9c27b0" text-anchor="middle" font-weight="bold">NEMA 17</text>
+    <text x="815" y="320" font-size="7" fill="#4a2060" text-anchor="middle">STEPPER MOTOR</text>
+    <text x="815" y="330" font-size="6.5" fill="#3a1a50" text-anchor="middle">1.8°/step · 200 steps/rev</text>
+
+    <!-- Connector block -->
+    <rect x="760" y="340" width="110" height="36" rx="3" fill="#111" stroke="#333" stroke-width="1.5"/>
+    <text x="772" y="353" font-size="7" fill="#ab47bc">1A</text>
+    <text x="789" y="353" font-size="7" fill="#ab47bc">1B</text>
+    <text x="806" y="353" font-size="7" fill="#9c27b0">2A</text>
+    <text x="823" y="353" font-size="7" fill="#9c27b0">2B</text>
+    <circle cx="775" cy="365" r="4" fill="#ab47bc" opacity="0.8"/>
+    <circle cx="793" cy="365" r="4" fill="#ab47bc" opacity="0.5"/>
+    <circle cx="811" cy="365" r="4" fill="#9c27b0" opacity="0.8"/>
+    <circle cx="829" cy="365" r="4" fill="#9c27b0" opacity="0.5"/>
+    <text x="815" y="390" font-size="7" fill="#2a1a40" text-anchor="middle">COIL CONNECTOR</text>
+  </g>
+
+  <!-- ===================================================================
+       POTENTIOMETER (TARGET / SETPOINT)
+  ==================================================================== -->
+  <g id="comp-pot" class="component" data-tip="Target Potentiometer (Setpoint Input)&#10;10kΩ Rotary Potentiometer&#10;Pin 1 → Arduino 5V (VCC)&#10;Pin 3 → GND&#10;Wiper (Pin 2) → Arduino A0&#10;Outputs 0–5V → maps to 0°–360°&#10;Acts as the desired position input">
+    <!-- Body -->
+    <rect x="22" y="450" width="80" height="80" rx="6" fill="#1a1520" stroke="#3a2a5a" stroke-width="1.5"/>
+    <!-- Knob -->
+    <circle cx="62" cy="482" r="24" fill="#111" stroke="#2a2050" stroke-width="2"/>
+    <circle cx="62" cy="482" r="14" fill="#0a0a14" stroke="#1e1a40" stroke-width="1.5"/>
+    <!-- Indicator line -->
+    <line x1="62" y1="482" x2="62" y2="464" stroke="#f9a825" stroke-width="2"/>
+    <!-- Terminals -->
+    <circle cx="32" cy="518" r="4" fill="#f9a825"/>
+    <text x="32" y="530" font-size="6.5" fill="#f9a825" text-anchor="middle">VCC</text>
+    <circle cx="62" cy="518" r="4" fill="#1e88e5"/>
+    <text x="62" y="530" font-size="6.5" fill="#1e88e5" text-anchor="middle">WPR</text>
+    <circle cx="92" cy="518" r="4" fill="#546e7a"/>
+    <text x="92" y="530" font-size="6.5" fill="#546e7a" text-anchor="middle">GND</text>
+    <!-- Label -->
+    <text x="62" y="545" font-size="8" fill="#3a2a5a" text-anchor="middle">TARGET POT</text>
+    <text x="62" y="555" font-size="7" fill="#2a1a40" text-anchor="middle">10kΩ</text>
+  </g>
+
+  <!-- ===================================================================
+       PUSH BUTTON (MODE SELECT)
+  ==================================================================== -->
+  <g id="comp-btn" class="component" data-tip="Mode Push-Button&#10;Tactile momentary switch&#10;Side 1 → GND&#10;Side 2 → Arduino Pin 5&#10;Uses INPUT_PULLUP (internal pull-up)&#10;Press cycles between:&#10; AUTO mode (closed-loop)&#10; MANUAL mode (free spin)">
+    <!-- Button body -->
+    <rect x="115" y="460" width="55" height="55" rx="4" fill="#1a0e0e" stroke="#5a1a1a" stroke-width="1.5"/>
+    <!-- Cap -->
+    <circle cx="142" cy="482" r="16" fill="#2a0a0a" stroke="#7a1a1a" stroke-width="2"/>
+    <circle cx="142" cy="482" r="10" fill="#e53935" opacity="0.7"/>
+    <circle cx="142" cy="482" r="5" fill="#ff6659"/>
+    <!-- Pins -->
+    <line x1="120" y1="515" x2="120" y2="528" stroke="#546e7a" stroke-width="2"/>
+    <line x1="162" y1="515" x2="162" y2="528" stroke="#1e88e5" stroke-width="2"/>
+    <circle cx="120" cy="530" r="3" fill="#546e7a"/>
+    <circle cx="162" cy="530" r="3" fill="#1e88e5"/>
+    <text x="120" y="540" font-size="6.5" fill="#546e7a" text-anchor="middle">GND</text>
+    <text x="162" y="540" font-size="6.5" fill="#1e88e5" text-anchor="middle">D5</text>
+    <!-- Label -->
+    <text x="142" y="555" font-size="8" fill="#5a1a1a" text-anchor="middle">MODE BTN</text>
+  </g>
+
+  <!-- ===================================================================
+       WIRES / CONNECTIONS
+  ==================================================================== -->
+
+  <!-- PSU (+12V) → 12V rail on breadboard -->
+  <line x1="50" y1="75" x2="50" y2="130" stroke="#e53935" stroke-width="2.5" filter="url(#glow-red)"/>
+  <line x1="50" y1="130" x2="400" y2="130" stroke="#e53935" stroke-width="2.5" filter="url(#glow-red)"/>
+  <line x1="400" y1="130" x2="400" y2="155" stroke="#e53935" stroke-width="2.5" filter="url(#glow-red)"/>
+  <!-- node dot -->
+  <circle cx="400" cy="155" r="4" fill="#e53935"/>
+
+  <!-- PSU (GND) → GND rail on breadboard -->
+  <line x1="115" y1="82" x2="115" y2="120" stroke="#333d4f" stroke-width="2"/>
+  <line x1="115" y1="120" x2="310" y2="120" stroke="#333d4f" stroke-width="2"/>
+  <line x1="310" y1="120" x2="310" y2="171" stroke="#333d4f" stroke-width="2"/>
+  <circle cx="310" cy="171" r="4" fill="#546e7a"/>
+
+  <!-- Arduino GND → GND Rail -->
+  <line x1="208" y1="242" x2="230" y2="242" stroke="#333d4f" stroke-width="2"/>
+  <line x1="230" y1="242" x2="230" y2="171" stroke="#333d4f" stroke-width="2"/>
+  <circle cx="230" cy="171" r="4" fill="#546e7a"/>
+
+  <!-- Arduino 5V → Pot Pin 1 -->
+  <line x1="208" y1="228" x2="240" y2="228" stroke="#f9a825" stroke-width="2"/>
+  <line x1="240" y1="228" x2="240" y2="600" stroke="#f9a825" stroke-width="2"/>
+  <line x1="240" y1="600" x2="32" y2="600" stroke="#f9a825" stroke-width="2"/>
+  <line x1="32" y1="600" x2="32" y2="518" stroke="#f9a825" stroke-width="2"/>
+  <circle cx="32" cy="518" r="3" fill="#f9a825"/>
+
+  <!-- Arduino D3 → DRV STP -->
+  <line x1="208" y1="256" x2="280" y2="256" stroke="#43a047" stroke-width="2" filter="url(#glow-green)"/>
+  <line x1="280" y1="256" x2="478" y2="256" stroke="#43a047" stroke-width="2" filter="url(#glow-green)" marker-end="url(#arr-grn)"/>
+  <!-- step label -->
+  <text x="360" y="249" font-size="7.5" fill="#43a047" text-anchor="middle">STEP (D3 → STP)</text>
+
+  <!-- Arduino D4 → DRV DIR -->
+  <line x1="208" y1="270" x2="290" y2="270" stroke="#43a047" stroke-width="2"/>
+  <line x1="290" y1="270" x2="478" y2="270" stroke="#43a047" stroke-width="2" marker-end="url(#arr-grn)"/>
+  <text x="360" y="263" font-size="7.5" fill="#2e7d32" text-anchor="middle">DIR  (D4 → DIR)</text>
+
+  <!-- Arduino D5 → Button side 2 -->
+  <line x1="208" y1="284" x2="250" y2="284" stroke="#1e88e5" stroke-width="2"/>
+  <line x1="250" y1="284" x2="250" y2="610" stroke="#1e88e5" stroke-width="2"/>
+  <line x1="250" y1="610" x2="162" y2="610" stroke="#1e88e5" stroke-width="2"/>
+  <line x1="162" y1="610" x2="162" y2="530" stroke="#1e88e5" stroke-width="2"/>
+  <circle cx="162" cy="530" r="3" fill="#1e88e5"/>
+
+  <!-- Arduino A0 → Pot Wiper -->
+  <line x1="208" y1="298" x2="260" y2="298" stroke="#1e88e5" stroke-width="2"/>
+  <line x1="260" y1="298" x2="260" y2="620" stroke="#1e88e5" stroke-width="2"/>
+  <line x1="260" y1="620" x2="62" y2="620" stroke="#1e88e5" stroke-width="2"/>
+  <line x1="62" y1="620" x2="62" y2="518" stroke="#1e88e5" stroke-width="2"/>
+  <circle cx="62" cy="518" r="3" fill="#1e88e5"/>
+  <text x="160" y="615" font-size="7" fill="#1565c0">A0 ← WIPER</text>
+
+  <!-- DRV VMOT → 12V Rail -->
+  <line x1="478" y1="228" x2="420" y2="228" stroke="#e53935" stroke-width="2.5" filter="url(#glow-red)"/>
+  <line x1="420" y1="228" x2="420" y2="155" stroke="#e53935" stroke-width="2.5" filter="url(#glow-red)"/>
+  <circle cx="420" cy="155" r="4" fill="#e53935"/>
+  <text x="445" y="220" font-size="7" fill="#b71c1c">VMOT</text>
+
+  <!-- DRV GND → GND Rail -->
+  <line x1="478" y1="242" x2="440" y2="242" stroke="#333d4f" stroke-width="2"/>
+  <line x1="440" y1="242" x2="440" y2="171" stroke="#333d4f" stroke-width="2"/>
+  <circle cx="440" cy="171" r="4" fill="#546e7a"/>
+
+  <!-- DRV 1A → NEMA 17 1A -->
+  <line x1="613" y1="228" x2="680" y2="228" stroke="#ab47bc" stroke-width="2" filter="url(#glow-blue)"/>
+  <line x1="680" y1="228" x2="680" y2="360" stroke="#ab47bc" stroke-width="2" filter="url(#glow-blue)"/>
+  <line x1="680" y1="360" x2="775" y2="360" stroke="#ab47bc" stroke-width="2" filter="url(#glow-blue)" marker-end="url(#arr-pur)"/>
+  <text x="700" y="222" font-size="7.5" fill="#ab47bc">1A → COIL A+</text>
+
+  <!-- DRV 1B → NEMA 17 1B -->
+  <line x1="613" y1="242" x2="700" y2="242" stroke="#8e24aa" stroke-width="2"/>
+  <line x1="700" y1="242" x2="700" y2="370" stroke="#8e24aa" stroke-width="2"/>
+  <line x1="700" y1="370" x2="793" y2="370" stroke="#8e24aa" stroke-width="2" marker-end="url(#arr-pur)"/>
+  <text x="700" y="236" font-size="7.5" fill="#8e24aa">1B → COIL A−</text>
+
+  <!-- DRV 2A → NEMA 17 2A -->
+  <line x1="613" y1="256" x2="720" y2="256" stroke="#9c27b0" stroke-width="2"/>
+  <line x1="720" y1="256" x2="720" y2="380" stroke="#9c27b0" stroke-width="2"/>
+  <line x1="720" y1="380" x2="811" y2="380" stroke="#9c27b0" stroke-width="2" marker-end="url(#arr-pur)"/>
+  <text x="700" y="250" font-size="7.5" fill="#9c27b0">2A → COIL B+</text>
+
+  <!-- DRV 2B → NEMA 17 2B -->
+  <line x1="613" y1="270" x2="740" y2="270" stroke="#7b1fa2" stroke-width="2"/>
+  <line x1="740" y1="270" x2="740" y2="390" stroke="#7b1fa2" stroke-width="2"/>
+  <line x1="740" y1="390" x2="829" y2="390" stroke="#7b1fa2" stroke-width="2" marker-end="url(#arr-pur)"/>
+
+  <!-- Pot GND → GND Rail -->
+  <line x1="92" y1="518" x2="92" y2="580" stroke="#333d4f" stroke-width="2"/>
+  <line x1="92" y1="580" x2="190" y2="580" stroke="#333d4f" stroke-width="2"/>
+  <line x1="190" y1="580" x2="190" y2="516" stroke="#333d4f" stroke-width="2"/>
+
+  <!-- Button GND → GND Rail -->
+  <line x1="120" y1="530" x2="120" y2="570" stroke="#333d4f" stroke-width="2"/>
+  <line x1="120" y1="570" x2="200" y2="570" stroke="#333d4f" stroke-width="2"/>
+  <line x1="200" y1="570" x2="200" y2="516" stroke="#333d4f" stroke-width="2"/>
+
+  <!-- VMOT connection wire annotation -->
+  <text x="50" y="145" font-size="7.5" fill="#b71c1c">12V+</text>
+  <text x="115" y="112" font-size="7.5" fill="#546e7a">GND</text>
+
+  <!-- ===================================================================
+       SIGNAL FLOW LABELS (on the breadboard center area)
+  ==================================================================== -->
+  <rect x="185" y="380" width="250" height="110" rx="6" fill="#0a1520" stroke="#1a3050" stroke-width="1" opacity="0.9"/>
+  <text x="310" y="396" font-size="8.5" fill="#4a90b8" text-anchor="middle" font-weight="bold" letter-spacing="1">CLOSED-LOOP FLOW</text>
+  <text x="200" y="412" font-size="8" fill="#2e7d32">①</text>
+  <text x="213" y="412" font-size="7.5" fill="#b0bec5">Pot → A0 (Setpoint 0–5V)</text>
+  <text x="200" y="426" font-size="8" fill="#1565c0">②</text>
+  <text x="213" y="426" font-size="7.5" fill="#b0bec5">Arduino maps → target angle</text>
+  <text x="200" y="440" font-size="8" fill="#7b1fa2">③</text>
+  <text x="213" y="440" font-size="7.5" fill="#b0bec5">Error = target − current pos</text>
+  <text x="200" y="454" font-size="8" fill="#e65100">④</text>
+  <text x="213" y="454" font-size="7.5" fill="#b0bec5">D3 pulses STEP (proportional)</text>
+  <text x="200" y="468" font-size="8" fill="#1b5e20">⑤</text>
+  <text x="213" y="468" font-size="7.5" fill="#b0bec5">D4 sets DIR (sign of error)</text>
+  <text x="200" y="482" font-size="8" fill="#4a148c">⑥</text>
+  <text x="213" y="482" font-size="7.5" fill="#b0bec5">Motor moves → step counter updates</text>
+
+  <!-- ===================================================================
+       COMPONENT LABELS (floating labels)
+  ==================================================================== -->
+  <text x="85" y="215" font-size="8.5" fill="#1a5c30" text-anchor="middle" letter-spacing="1">ARDUINO UNO</text>
+  <text x="545" y="210" font-size="8.5" fill="#3a3a8a" text-anchor="middle" letter-spacing="1">DRV8825 MODULE</text>
+
+  <!-- ===================================================================
+       TITLE BAR (bottom)
+  ==================================================================== -->
+  <rect x="0" y="668" width="980" height="32" fill="#06090d"/>
+  <text x="20" y="688" font-size="8.5" fill="#1a3a5a" letter-spacing="1">CLOSED-LOOP POSITION CONTROL — Arduino + DRV8825 + NEMA17</text>
+  <text x="760" y="688" font-size="8" fill="#1a3a5a">Abdullah Nadem · FUUAST EEE · 2026</text>
+  <line x1="0" y1="668" x2="980" y2="668" stroke="#111d28" stroke-width="1"/>
+</svg>
+</div>
+
+<div class="tooltip" id="tooltip"></div>
+
+<footer>Hover over any component for pin/connection details &nbsp;|&nbsp; Closed-Loop Position Control System · 12V/2A PSU · DRV8825 · NEMA17</footer>
+
+<script>
+  const tooltip = document.getElementById('tooltip');
+  const components = document.querySelectorAll('.component');
+
+  components.forEach(el => {
+    el.style.cursor = 'pointer';
+    el.addEventListener('mouseenter', (e) => {
+      const tip = el.getAttribute('data-tip');
+      if (!tip) return;
+      tooltip.innerHTML = tip.replace(/&#10;/g, '<br>').replace(/&amp;/g, '&');
+      tooltip.style.opacity = '1';
+    });
+    el.addEventListener('mousemove', (e) => {
+      tooltip.style.left = (e.clientX + 14) + 'px';
+      tooltip.style.top = (e.clientY + 14) + 'px';
+    });
+    el.addEventListener('mouseleave', () => {
+      tooltip.style.opacity = '0';
+    });
+  });
+</script>
+</body>
+</html>
